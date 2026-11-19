@@ -1,0 +1,13 @@
+# Large data and run outputs live in Kaggle Datasets, not in git
+data/raw/
+data/wiki_sentences/
+data/corpus/
+data/splits/
+outputs/
+models/
+*.part
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+.ipynb_checkpoints/

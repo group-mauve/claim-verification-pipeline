@@ -1,0 +1,11 @@
+# Phase 1 (data, splits, corpus, metrics). All except pyyaml/pytest are preinstalled on Kaggle.
+numpy
+pandas
+pyarrow
+scipy
+scikit-learn
+pyyaml
+pytest
+# Official FEVER scorer, used by tests/test_metrics.py:
+#   pip install git+https://github.com/sheffieldnlp/fever-scorer
+# Phase 2 will add: pyserini (+ Java 21), faiss-cpu / faiss-gpu, sentence-transformers, transformers, spacy
