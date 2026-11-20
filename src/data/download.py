@@ -95,8 +95,55 @@ def get_raw_file(name: str, cfg: dict, log) -> Path:
         log.info(f"Found existing {name}: {found}")
         return found
     dest = resolve(cfg["paths"]["raw_dir"]) / name
-    download(cfg["download"]["files"][name], dest, log)
+    try:
+        download(cfg["download"]["files"][name], dest, log)
+    except RuntimeError:
+        if name != "hotpot_dev_distractor_v1.json":
+            raise
+        # The original HotpotQA host (curtis.ml.cmu.edu) is often unreachable; fall back to the
+        # Hugging Face Hub copy of the same dev distractor set.
+        hotpot_from_hf(dest, cfg["download"].get("hotpot_hf_repos", ["hotpotqa/hotpot_qa"]), log)
     return dest
+
+
+def hotpot_from_hf(dest: Path, repos: list[str], log) -> None:
+    """Load HotpotQA dev (distractor) from the HF Hub and save it in the original JSON format.
+
+    HF stores supporting_facts as {"title": [...], "sent_id": [...]} and context as
+    {"title": [...], "sentences": [[...], ...]}; the original file uses lists of [title, sent_id]
+    and [title, [sentences]]. We convert back so every later step reads one format.
+    """
+    from datasets import load_dataset  # preinstalled on Kaggle
+
+    last_error = None
+    for repo in repos:
+        try:
+            log.info(f"Loading HotpotQA distractor validation split from Hugging Face: {repo}")
+            data = load_dataset(repo, "distractor", split="validation")
+            break
+        except Exception as exc:  # noqa: BLE001 - try the next repo name
+            last_error = exc
+            log.warning(f"  failed: {exc}")
+    else:
+        raise RuntimeError(
+            f"HotpotQA could not be loaded from the original host or Hugging Face ({last_error}). "
+            "Add a Kaggle Dataset containing hotpot_dev_distractor_v1.json as an input and re-run."
+        )
+    rows = []
+    for ex in data:
+        rows.append({
+            "_id": ex["id"],
+            "question": ex["question"],
+            "answer": ex["answer"],
+            "type": ex["type"],
+            "level": ex["level"],
+            "supporting_facts": [[t, int(s)] for t, s in zip(ex["supporting_facts"]["title"], ex["supporting_facts"]["sent_id"])],
+            "context": [[t, list(s)] for t, s in zip(ex["context"]["title"], ex["context"]["sentences"])],
+        })
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with open(dest, "w", encoding="utf-8") as f:
+        json.dump(rows, f, ensure_ascii=False)
+    log.info(f"Saved {len(rows):,} HotpotQA questions to {dest} (converted from {repo})")
 
 
 def find_wiki_source(cfg: dict, log) -> Path:
