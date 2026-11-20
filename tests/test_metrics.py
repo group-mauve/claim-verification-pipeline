@@ -114,7 +114,7 @@ def _random_predictions(gold, seed=42):
 
 
 def test_matches_official_fever_scorer_on_200_dev_claims():
-    scorer = pytest.importorskip("fever.scorer", reason="pip install git+https://github.com/sheffieldnlp/fever-scorer")
+    scorer = pytest.importorskip("fever.scorer", reason="clone sheffieldnlp/fever-scorer and add its src/ folder to PYTHONPATH")
     dev_path = locate_file("shared_task_dev.jsonl", ["data/raw", ".", "/kaggle/input"])
     if dev_path is None:
         pytest.skip("shared_task_dev.jsonl not found")

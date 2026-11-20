@@ -7,5 +7,6 @@ scikit-learn
 pyyaml
 pytest
 # Official FEVER scorer, used by tests/test_metrics.py:
-#   pip install git+https://github.com/sheffieldnlp/fever-scorer
+#   git clone https://github.com/sheffieldnlp/fever-scorer  and add its src/ folder to PYTHONPATH
+#   (its setup.py does not build with current pip; the notebook does this for you)
 # Phase 2 will add: pyserini (+ Java 21), faiss-cpu / faiss-gpu, sentence-transformers, transformers, spacy

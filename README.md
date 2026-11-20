@@ -37,7 +37,7 @@ On Kaggle, follow `notebooks/01_data.ipynb`. Locally or in any shell, from the r
 
 ```
 pip install -r requirements.txt
-pip install git+https://github.com/sheffieldnlp/fever-scorer
+git clone https://github.com/sheffieldnlp/fever-scorer   # then add its src/ folder to PYTHONPATH (pip install fails)
 python -m pytest -q                                   # metric tests
 python -m src.data.download     --config configs/data.yaml
 python -m src.data.splits       --config configs/data.yaml
