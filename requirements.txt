@@ -9,4 +9,6 @@ pytest
 # Official FEVER scorer, used by tests/test_metrics.py:
 #   git clone https://github.com/sheffieldnlp/fever-scorer  and add its src/ folder to PYTHONPATH
 #   (its setup.py does not build with current pip; the notebook does this for you)
-# Phase 2 will add: pyserini (+ Java 21), faiss-cpu / faiss-gpu, sentence-transformers, transformers, spacy
+# Phase 2 (installed by the notebooks):
+#   pyserini (+ Java 21), rank_bm25, faiss-cpu, sentence-transformers, transformers, torch
+# Later phases: spacy

@@ -54,7 +54,10 @@ data/
    rank-2 ones, until the page target or sentence cap is reached.
 3. **random**: random non-empty pages until about 50,000 pages.
 
-Real counts are in `corpus/corpus_stats.json` after the run. Every SUPPORTS / REFUTES test claim
+Result of the Kaggle run: 9,197 evidence pages + 40,803 decoy pages + **0 random pages** = 50,000 pages,
+308,328 sentences, 0 evidence pages missing. The decoys filled the page target before any random pages
+were needed, so every non-evidence page resembles some claim. This makes retrieval harder than a corpus
+with random filler, and should be stated in the report. Real counts are in `corpus/corpus_stats.json`. Every SUPPORTS / REFUTES test claim
 must have all its evidence pages in the corpus; the script stops with an error otherwise.
 
 ## Uploading as a Kaggle Dataset

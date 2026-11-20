@@ -1,0 +1,26 @@
+# Prompt 7: DPR checkpoint vs MiniLM on the 5k test subset (owner M2). Needs a GPU.
+run_name: dpr_compare
+seed: 42
+
+paths:
+  outputs_dir: outputs
+  search_dirs:
+    - data
+    - outputs
+    - /kaggle/input
+
+dpr:
+  ctx_model: facebook/dpr-ctx_encoder-single-nq-base
+  question_model: facebook/dpr-question_encoder-single-nq-base
+  max_length: 256
+  batch_size: 128
+  fp16: true
+  shard_size: 50000
+minilm:
+  run_name: dense_offshelf   # reuse its corpus embeddings (same row order as the corpus)
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+# Candidate pool = evidence pages of the 5k claims + every page in their BM25 top-100.
+# BM25 picks the pool so neither dense model chooses its own candidates.
+pool_from: bm25
+top_k: 100
+latency_queries: 200

@@ -1,0 +1,27 @@
+# Prompt 5: BM25 baseline (owner M1). CPU only.
+run_name: bm25
+seed: 42
+test_subset: full            # full | 5k
+
+paths:
+  outputs_dir: outputs
+  # Where to look for corpus/sentences.parquet and splits/*.jsonl (recursive).
+  # On Kaggle, add the fever-corpus-v1 dataset as an input; it is found under /kaggle/input.
+  search_dirs:
+    - data
+    - /kaggle/input
+
+bm25:
+  backend: pyserini          # pyserini | rank_bm25 (rank_bm25 only for the quick test)
+  threads: 4                 # Kaggle CPU sessions have 4 cores
+  top_k: 100                 # hits kept per claim for val / test
+  train_top_k: 20            # hits kept per train claim (only needed for Prompt 8 hard negatives)
+  grid:
+    k1: [0.6, 0.9, 1.2, 1.5]
+    b: [0.4, 0.75, 0.9]
+  tune_metric: [sentence, recall@10]   # level, metric used to pick k1 and b on validation
+  latency_queries: 200       # single queries timed one by one for ms/query
+
+quick_test:                  # used with --quick: rank_bm25 on a 50k-sentence sample
+  n_docs: 50000
+  n_claims: 300

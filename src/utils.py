@@ -61,12 +61,14 @@ def set_seed(seed: int) -> None:
 
 
 # --------------------------------------------------------------------------- logging
-def start_run(cfg: dict, step: str) -> tuple[Path, logging.Logger]:
-    """Create outputs/<run_name>/<step>/ and a logger that writes to console and run.log."""
-    run_dir = resolve(cfg["paths"]["outputs_dir"]) / cfg["run_name"] / step
+def start_run(cfg: dict, step: str | None = None) -> tuple[Path, logging.Logger]:
+    """Create outputs/<run_name>/[<step>/] and a logger that writes to console and run.log."""
+    run_dir = resolve(cfg["paths"]["outputs_dir"]) / cfg["run_name"]
+    if step:
+        run_dir = run_dir / step
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    logger = logging.getLogger(f"{cfg['run_name']}.{step}")
+    logger = logging.getLogger(f"{cfg['run_name']}.{step or 'main'}")
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
     fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", "%H:%M:%S")
@@ -128,6 +130,13 @@ def readable_title(page_id: str) -> str:
     for token, char in _TITLE_TOKENS.items():
         text = text.replace(token, char)
     return text.replace("_", " ")
+
+
+def clean_text(text: str) -> str:
+    """Undo the dump's tokenisation for model input: '-LRB- 2008 -RRB-' -> '( 2008 )', `` '' -> "."""
+    for token, char in _TITLE_TOKENS.items():
+        text = text.replace(token, char)
+    return text.replace("``", '"').replace("''", '"')
 
 
 def evidence_sets(claim: dict) -> list[list[tuple[str, int]]]:

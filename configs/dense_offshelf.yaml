@@ -1,0 +1,22 @@
+# Prompt 6: off-the-shelf dense retrieval (owner M2). Needs a GPU (T4 / P100).
+run_name: dense_offshelf
+seed: 42
+test_subset: full            # full | 5k
+
+paths:
+  outputs_dir: outputs
+  search_dirs:
+    - data
+    - outputs
+    - /kaggle/input
+
+dense:
+  model_name: sentence-transformers/all-MiniLM-L6-v2   # Prompt 8 points this at models/minilm_ft
+  text_format: "title: sentence"                     # documentation only; see common.doc_text
+  batch_size: 256
+  fp16: true
+  shard_size: 50000          # sentences per saved .npy shard (resume after a session timeout)
+  top_k: 100
+  latency_queries: 200
+  save_faiss_index: true     # also write index.faiss (same vectors, ready to load)
+  compare_with: bm25         # run_name whose run_test.jsonl is compared side by side (skipped if absent)
