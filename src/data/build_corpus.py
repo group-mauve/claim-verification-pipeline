@@ -30,6 +30,7 @@ import pyarrow.parquet as pq
 from src.data.page_bm25 import SparseBM25
 from src.utils import (
     LABELS,
+    canonical_page,
     evidence_pages,
     evidence_sets,
     load_config,
@@ -46,14 +47,23 @@ def load_all_pages(wiki_dir) -> pd.DataFrame:
     files = sorted(str(p) for p in wiki_dir.glob("pages-*.parquet"))
     if not files:
         raise FileNotFoundError(f"No pages-*.parquet in {wiki_dir}; run src.data.download first.")
-    return ds.dataset(files, format="parquet").to_table().to_pandas()
+    pages = ds.dataset(files, format="parquet").to_table().to_pandas()
+    # Keep the title exactly as stored in the Parquet (needed to filter the sentence shards) and
+    # use the NFC form everywhere else. Shards parsed before the Unicode fix are NFD for accents.
+    pages["stored_id"] = pages["page_id"]
+    pages["page_id"] = pages["page_id"].map(canonical_page)
+    return pages.drop_duplicates("page_id", keep="first").reset_index(drop=True)
 
 
 def find_decoys(claims: list[dict], pages: pd.DataFrame, cfg: dict, cache_path, log) -> dict[str, list[str]]:
     """claim id -> up to decoys_per_claim non-evidence page ids, best BM25 match first. Cached."""
     if cache_path.exists():
         log.info(f"Loading cached decoys from {cache_path}")
-        return {k: v for k, v in json.loads(cache_path.read_text()).items()}
+        cached = json.loads(cache_path.read_text())
+        # A cache written before the Unicode fix may hold an evidence page in its other form;
+        # normalise and drop any decoy that is actually one of the claim's evidence pages.
+        by_id = {str(x["id"]): evidence_pages(x) for x in claims}
+        return {k: [p for p in map(canonical_page, v) if p not in by_id.get(k, set())] for k, v in cached.items()}
 
     c = cfg["corpus"]
     log.info(f"Building temporary BM25 over {len(pages):,} pages (title + first sentence) ...")
@@ -146,8 +156,12 @@ def main(argv=None) -> int:
     # 4. Collect the sentences of the selected pages ---------------------------------------
     log.info("Reading sentences of the selected pages ...")
     files = sorted(str(p) for p in wiki_dir.glob("sentences-*.parquet"))
-    table = ds.dataset(files, format="parquet").to_table(filter=ds.field("page_id").isin(sorted(selected)))
-    sentences = table.to_pandas().sort_values(["page_id", "sent_id"]).reset_index(drop=True)
+    stored = pages.loc[pages["page_id"].isin(selected), "stored_id"].tolist()
+    table = ds.dataset(files, format="parquet").to_table(filter=ds.field("page_id").isin(sorted(stored)))
+    sentences = table.to_pandas()
+    sentences["page_id"] = sentences["page_id"].map(canonical_page)
+    sentences["links"] = sentences["links"].map(lambda ls: [canonical_page(t) for t in ls])
+    sentences = sentences.sort_values(["page_id", "sent_id"]).reset_index(drop=True)
     if len(sentences) > c["max_sentences"]:
         log.warning(f"{len(sentences):,} sentences exceed the cap because evidence pages alone are that large")
 

@@ -14,6 +14,7 @@ import logging
 import os
 import random
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
@@ -111,6 +112,16 @@ def save_json(obj: Any, path: str | os.PathLike) -> None:
 _TITLE_TOKENS = {"-LRB-": "(", "-RRB-": ")", "-LSB-": "[", "-RSB-": "]", "-LCB-": "{", "-RCB-": "}", "-COLON-": ":"}
 
 
+def canonical_page(page_id: str) -> str:
+    """One Unicode form (NFC) for every page title.
+
+    FEVER stores accented titles inconsistently: 'García' may be one character 'í' (NFC) or
+    'i' + a combining accent (NFD). Both look identical but compare unequal, which made 88
+    evidence pages look missing from the dump. Every title we read goes through this function.
+    """
+    return page_id if page_id.isascii() else unicodedata.normalize("NFC", page_id)
+
+
 def readable_title(page_id: str) -> str:
     """FEVER page ids look like 'Soul_Food_-LRB-film-RRB-'; return 'Soul Food (film)'."""
     text = page_id
@@ -126,7 +137,7 @@ def evidence_sets(claim: dict) -> list[list[tuple[str, int]]]:
     """
     sets = []
     for group in claim.get("evidence", []):
-        items = [(e[2], int(e[3])) for e in group if e[2] is not None]
+        items = [(canonical_page(e[2]), int(e[3])) for e in group if e[2] is not None]
         if items:
             sets.append(items)
     return sets

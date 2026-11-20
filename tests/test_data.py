@@ -13,13 +13,22 @@ def test_is_wiki_file_skips_macos_metadata():
     assert not is_wiki_file("wiki-pages/README.txt")
 from src.data.page_bm25 import SparseBM25
 from src.data.splits import allocate, stratified_sample
-from src.utils import evidence_pages, evidence_sets, readable_title
+from src.utils import canonical_page, evidence_pages, evidence_sets, readable_title
 
 
 def test_parse_lines_field_keeps_links_and_drops_empty():
     lines = "0\tNikolaj is a Danish actor .\tDanish\tDenmark\tactor\tActor\n1\t\n2\tHe was born in 1970 ."
     out = parse_lines_field(lines)
     assert out == [(0, "Nikolaj is a Danish actor .", ["Denmark", "Actor"]), (2, "He was born in 1970 .", [])]
+
+
+def test_canonical_page_unifies_unicode_forms():
+    import unicodedata
+
+    nfd, nfc = unicodedata.normalize("NFD", "Andy_García"), unicodedata.normalize("NFC", "Andy_García")
+    assert nfd != nfc and canonical_page(nfd) == canonical_page(nfc) == nfc
+    claim = {"evidence": [[[1, 1, nfd, 0]]]}
+    assert evidence_pages(claim) == {nfc}
 
 
 def test_readable_title_and_evidence_helpers():

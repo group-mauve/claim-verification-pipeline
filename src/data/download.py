@@ -33,6 +33,7 @@ import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 
 from src.utils import (
+    canonical_page,
     evidence_sets,
     iter_jsonl,
     load_config,
@@ -173,7 +174,7 @@ def parse_lines_field(lines: str) -> list[tuple[int, str, list[str]]]:
         if not text:
             continue
         extras = parts[2:]
-        links = [t.strip() for t in extras[1::2] if t.strip()]
+        links = [canonical_page(t.strip()) for t in extras[1::2] if t.strip()]
         out.append((int(parts[0]), text, links))
     return out
 
@@ -227,7 +228,7 @@ def parse_wiki(source: Path, out_dir: Path, compression: str, log) -> dict:
                 continue
             n_lines += 1
             page = json.loads(line)
-            pid = page.get("id", "")
+            pid = canonical_page(page.get("id", ""))
             if not pid:
                 n_empty += 1
                 continue

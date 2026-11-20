@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from collections.abc import Hashable, Iterable, Sequence
 
-from src.utils import LABELS
+from src.utils import LABELS, canonical_page
 
 Item = Hashable
 
@@ -217,9 +217,10 @@ def is_strictly_correct(pred_label: str, pred_evidence: Sequence, gold_label: st
         return False
     if gold_label.upper() == "NOT ENOUGH INFO":
         return True
-    predicted = {(str(p), int(s)) for p, s in list(pred_evidence)[:max_evidence]}
+    # Titles are compared in one Unicode form (see utils.canonical_page).
+    predicted = {(canonical_page(str(p)), int(s)) for p, s in list(pred_evidence)[:max_evidence]}
     for group in gold_evidence:
-        needed = [(e[2], int(e[3])) for e in group if e[2] is not None]
+        needed = [(canonical_page(e[2]), int(e[3])) for e in group if e[2] is not None]
         if needed and all(x in predicted for x in needed):
             return True
     return False

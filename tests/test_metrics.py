@@ -89,6 +89,14 @@ def test_fever_score_hand_example():
     assert M.fever_score(preds, GOLD) == {"fever_score": 0.5, "label_accuracy": 0.75}
 
 
+def test_fever_score_ignores_unicode_form_of_titles():
+    import unicodedata
+
+    gold = [{"label": "SUPPORTS", "evidence": [[[1, 1, unicodedata.normalize("NFD", "Andy_García"), 0]]]}]
+    preds = [{"predicted_label": "SUPPORTS", "predicted_evidence": [[unicodedata.normalize("NFC", "Andy_García"), 0]]}]
+    assert M.fever_score(preds, gold)["fever_score"] == 1.0
+
+
 def test_fever_score_only_first_five_sentences_count():
     preds = [{"predicted_label": "SUPPORTS", "predicted_evidence": [["x", i] for i in range(5)] + [["A", 0]]}]
     assert M.fever_score(preds, GOLD[:1])["fever_score"] == 0.0

@@ -62,6 +62,14 @@ matrices, instead of Pyserini. Every page becomes a row of BM25 term weights, a 
 term vector, and one sparse matrix product scores all 5.4M pages at once. This avoids installing
 Java just to build a temporary index. Pyserini remains the main sparse retriever in Prompt 5.
 
+## Unicode page titles (important for everyone)
+
+FEVER stores accented page titles in two Unicode forms (e.g. `García` as one character or as
+`i` + combining accent), even within the claim files. All code converts titles with
+`src.utils.canonical_page` (NFC). Always build page ids through `evidence_sets` / `evidence_pages`
+or `canonical_page`, never from raw `e[2]`. When calling the official FEVER scorer (Prompt 14),
+pass gold evidence with titles converted by `canonical_page`, because the scorer compares strings exactly.
+
 ## References (Phase 1)
 
 - Thorne et al., 2018. FEVER: a Large-scale Dataset for Fact Extraction and VERification. NAACL.
