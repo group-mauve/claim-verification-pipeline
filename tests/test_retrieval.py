@@ -53,6 +53,24 @@ def test_find_output_with_subfolder(tmp_path):
     assert C.find_output(cfg, "bm25", "embeddings/meta.json") is None
 
 
+def test_locate_file_follows_symlinked_inputs(tmp_path):
+    import os
+
+    from src.utils import describe_inputs, locate_file
+
+    real = tmp_path / "datasets" / "owner" / "fever-corpus-v1" / "corpus"
+    real.mkdir(parents=True)
+    (real / "sentences.parquet").write_text("x")
+    inputs = tmp_path / "input"
+    inputs.mkdir()
+    try:
+        os.symlink(tmp_path / "datasets" / "owner" / "fever-corpus-v1", inputs / "fever-corpus-v1", target_is_directory=True)
+    except (OSError, NotImplementedError):
+        pytest.skip("this OS/user cannot create symlinks")
+    assert locate_file("sentences.parquet", [str(inputs)]) == inputs / "fever-corpus-v1" / "corpus" / "sentences.parquet"
+    assert "corpus" in describe_inputs(str(inputs))
+
+
 def test_encode_in_shards_resumes(tmp_path):
     calls = []
 

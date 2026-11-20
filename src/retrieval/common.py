@@ -17,6 +17,8 @@ import pandas as pd
 from src.eval.metrics import retrieval_report
 from src.utils import (
     clean_text,
+    describe_inputs,
+    walk_files,
     evidence_sets,
     iter_jsonl,
     locate_file,
@@ -34,15 +36,21 @@ def find_corpus_dir(cfg: dict) -> Path:
     """Folder holding sentences.parquet: data/corpus locally, or the fever-corpus-v1 Kaggle input."""
     hit = locate_file("sentences.parquet", cfg["paths"]["search_dirs"])
     if hit is None:
-        raise FileNotFoundError("corpus/sentences.parquet not found. Add the fever-corpus-v1 dataset as an input.")
+        raise FileNotFoundError(_not_found("corpus/sentences.parquet", cfg))
     return hit.parent
 
 
 def find_splits_dir(cfg: dict) -> Path:
     hit = locate_file("test_full.jsonl", cfg["paths"]["search_dirs"])
     if hit is None:
-        raise FileNotFoundError("splits/test_full.jsonl not found. Add the fever-corpus-v1 dataset as an input.")
+        raise FileNotFoundError(_not_found("splits/test_full.jsonl", cfg))
     return hit.parent
+
+
+def _not_found(what: str, cfg: dict) -> str:
+    return (f"{what} not found in {cfg['paths']['search_dirs']}.\n"
+            "On Kaggle: Add Input -> Your Work -> Datasets -> fever-corpus-v1 (or the 01-data notebook output).\n"
+            f"Currently under /kaggle/input:\n{describe_inputs()}")
 
 
 def find_output(cfg: dict, run_name: str, filename: str) -> Path | None:
@@ -57,7 +65,7 @@ def find_output(cfg: dict, run_name: str, filename: str) -> Path | None:
     for d in cfg["paths"]["search_dirs"]:
         root = resolve(d)
         if root.exists():
-            for hit in root.rglob(Path(filename).name):
+            for hit in walk_files(root, Path(filename).name):
                 if hit.parts[-len(tail):] == tail:
                     return hit
     return None

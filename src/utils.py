@@ -156,7 +156,28 @@ def evidence_pages(claim: dict) -> set[str]:
     return {page for group in evidence_sets(claim) for page, _ in group}
 
 
-def locate_file(name: str, search_dirs: list[str]) -> Path | None:
+_SKIP_DIRS = {".venv", "venv", ".git", "__pycache__", "lucene_index"}
+
+
+def walk_files(root: Path, name: str):
+    """Yield every file called `name` under root, following symbolic links.
+
+    Kaggle may mount inputs as symlinks; Path.rglob does not descend into symlinked folders on
+    the Python versions Kaggle runs, so we use os.walk(followlinks=True).
+    """
+    seen = set()
+    for dirpath, dirnames, filenames in os.walk(root, followlinks=True):
+        real = os.path.realpath(dirpath)
+        if real in seen:  # guard against symlink loops
+            dirnames[:] = []
+            continue
+        seen.add(real)
+        dirnames[:] = sorted(d for d in dirnames if d not in _SKIP_DIRS)
+        if name in filenames:
+            yield Path(dirpath) / name
+
+
+def locate_file(name: str, search_dirs: list[str], skip_outputs: bool = True) -> Path | None:
     """Find an existing copy of `name` in any search dir (recursively). Returns None if absent."""
     for d in search_dirs:
         root = resolve(d)
@@ -165,8 +186,25 @@ def locate_file(name: str, search_dirs: list[str]) -> Path | None:
         direct = root / name
         if direct.is_file():
             return direct
-        # Recursive search, but skip our own outputs and virtual environments.
-        for hit in root.rglob(name):
-            if hit.is_file() and not any(part in {"outputs", ".venv", "venv", ".git"} for part in hit.parts):
+        for hit in walk_files(root, name):
+            # Skip our own run outputs so a stale copy there is never mistaken for input data.
+            if not (skip_outputs and "outputs" in hit.parts):
                 return hit
     return None
+
+
+def describe_inputs(root: str = "/kaggle/input", depth: int = 4, limit: int = 40) -> str:
+    """List the folders under /kaggle/input (for error messages when an input is not found)."""
+    base = Path(root)
+    if not base.exists():
+        return f"{root} does not exist (not on Kaggle?)"
+    lines = []
+    for dirpath, dirnames, filenames in os.walk(base, followlinks=True):
+        level = len(Path(dirpath).relative_to(base).parts)
+        if level >= depth:
+            dirnames[:] = []
+        lines.append("  " * level + Path(dirpath).name + "/  " + ", ".join(sorted(filenames)[:5]))
+        if len(lines) >= limit:
+            lines.append("  ...")
+            break
+    return "\n".join(lines) if len(lines) > 1 else f"{root} is empty: no inputs are attached"
