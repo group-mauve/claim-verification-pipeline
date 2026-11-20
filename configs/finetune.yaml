@@ -1,0 +1,35 @@
+# Prompt 8: fine-tune MiniLM with in-batch + BM25 hard negatives (owner M2). Needs a GPU.
+# A second seed for the noise estimate: python -m src.retrieval.finetune --config configs/finetune.yaml --seed 43
+run_name: finetune
+seed: 42
+test_subset: full            # full | 5k
+
+paths:
+  outputs_dir: outputs
+  search_dirs: [data, outputs, /kaggle/input]
+
+finetune:
+  base_model: sentence-transformers/all-MiniLM-L6-v2
+  bm25_run: bm25             # needs outputs/bm25/run_train.jsonl (top 20 per train claim)
+  baseline_run: dense_offshelf   # its val metrics are the "before" numbers (recomputed if not attached)
+  output_model_dir: models/minilm_ft
+  dense_run: dense_ft        # run name of the re-encoded corpus + retrieval with the fine-tuned model
+  batch_size: 128
+  learning_rate: 2.0e-5
+  epochs: 1
+  warmup_ratio: 0.1
+  fp16: true
+  max_seq_length: 128        # tokens; claims and sentences are short, so little is cut
+  logging_steps: 20
+  false_negative_examples: 10
+
+dense_eval:                  # passed to src/retrieval/dense.run_dense (same settings as Prompt 6)
+  model_name: set-by-script
+  text_format: "title: sentence"
+  batch_size: 256
+  fp16: true
+  shard_size: 50000
+  top_k: 100
+  latency_queries: 200
+  save_faiss_index: true
+  compare_with: bm25

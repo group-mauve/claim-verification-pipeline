@@ -29,9 +29,26 @@ LABELS = ["SUPPORTS", "REFUTES", "NOT ENOUGH INFO"]
 
 # --------------------------------------------------------------------------- config
 def load_config(path: str | os.PathLike) -> dict:
-    """Read a YAML config file into a plain dict."""
-    with open(resolve(path), "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    """Read a YAML config file into a plain dict.
+
+    A config may start with `base: other.yaml` (path relative to the config's own folder): the base
+    is loaded first and this file's keys override it, nested dicts merged key by key.
+    """
+    p = resolve(path)
+    with open(p, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    base = cfg.pop("base", None)
+    if base:
+        cfg = deep_merge(load_config(p.parent / base), cfg)
+    return cfg
+
+
+def deep_merge(base: dict, override: dict) -> dict:
+    """Copy of `base` with `override` applied; nested dicts are merged instead of replaced."""
+    out = dict(base)
+    for k, v in override.items():
+        out[k] = deep_merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
 
 
 def resolve(path: str | os.PathLike) -> Path:

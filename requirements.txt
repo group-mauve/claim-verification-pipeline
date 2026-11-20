@@ -11,4 +11,4 @@ pytest
 #   (its setup.py does not build with current pip; the notebook does this for you)
 # Phase 2 (installed by the notebooks):
 #   pyserini (+ Java 21), rank_bm25, faiss-cpu, sentence-transformers, transformers, torch
-# Later phases: spacy
+# Phase 3 (installed by notebooks 04-06): datasets, spacy + en_core_web_sm, matplotlib, sentencepiece, six (official scorer)

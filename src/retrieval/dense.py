@@ -3,7 +3,8 @@
 Run (GPU session):
     python -m src.retrieval.dense --config configs/dense_offshelf.yaml
 
-The same script serves the fine-tuned model in Prompt 8 (only model_name / run_name change).
+The same code serves the fine-tuned model in Prompt 8: src/retrieval/finetune.py calls run_dense with
+model_name = models/minilm_ft and run_name = dense_ft.
 
 Steps
 1. Encode every corpus sentence as "title: sentence" with all-MiniLM-L6-v2 (384-d), L2-normalised,
@@ -33,6 +34,7 @@ from src.retrieval.common import (
     doc_text,
     evaluate_run,
     find_corpus_dir,
+    find_model_dir,
     find_output,
     find_splits_dir,
     format_report,
@@ -94,6 +96,23 @@ def load_bi_encoder(model_name: str, fp16: bool):
     if fp16 and device == "cuda":
         model.half()
     return model, device
+
+
+def embedding_dim(model) -> int:
+    """Vector size; newer sentence-transformers renamed get_sentence_embedding_dimension."""
+    fn = getattr(model, "get_embedding_dimension", None) or model.get_sentence_embedding_dimension
+    return int(fn())
+
+
+def load_embeddings(cfg: dict, run_name: str, n_expected: int) -> np.ndarray:
+    """Corpus vectors saved by run_dense (outputs/<run_name>/embeddings/emb_NNN.npy), in corpus row order."""
+    from src.retrieval.common import require_output
+
+    emb_dir = require_output(cfg, run_name, "embeddings/meta.json").parent
+    vectors = np.vstack([np.load(p) for p in sorted(emb_dir.glob("emb_*.npy"))]).astype(np.float32)
+    if len(vectors) != n_expected:
+        raise ValueError(f"{emb_dir} holds {len(vectors):,} vectors but the corpus has {n_expected:,} sentences")
+    return vectors
 
 
 def st_encoder(model, batch_size: int) -> Callable[[list[str]], np.ndarray]:
@@ -170,8 +189,12 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--config", default="configs/dense_offshelf.yaml")
     args = parser.parse_args(argv)
+    run_dense(load_config(args.config))
+    return 0
 
-    cfg = load_config(args.config)
+
+def run_dense(cfg: dict) -> dict:
+    """Encode the corpus, build the index, retrieve for val and test, evaluate. Returns the metrics."""
     set_seed(cfg["seed"])
     run_dir, log = start_run(cfg)
     dc = cfg["dense"]
@@ -180,8 +203,9 @@ def main(argv=None) -> int:
     corpus = load_corpus(corpus_dir)
     log.info(f"Corpus: {len(corpus):,} sentences from {corpus_dir}")
 
-    model, device = load_bi_encoder(dc["model_name"], dc["fp16"])
-    log.info(f"Model {dc['model_name']} on {device} (fp16={dc['fp16'] and device == 'cuda'}), dim {model.get_sentence_embedding_dimension()}")
+    model_path = find_model_dir(cfg, dc["model_name"])
+    model, device = load_bi_encoder(model_path, dc["fp16"])
+    log.info(f"Model {model_path} on {device} (fp16={dc['fp16'] and device == 'cuda'}), dim {embedding_dim(model)}")
     encode = st_encoder(model, dc["batch_size"])
 
     texts = [doc_text(p, t) for p, t in zip(corpus["page_id"], corpus["text"])]
@@ -231,7 +255,7 @@ def main(argv=None) -> int:
                     "On Kaggle, add the BM25 notebook's output as an input.")
     save_json(metrics, run_dir / "metrics.json")
     log.info(f"Outputs written to {run_dir}")
-    return 0
+    return metrics
 
 
 if __name__ == "__main__":

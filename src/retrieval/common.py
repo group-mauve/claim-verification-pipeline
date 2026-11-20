@@ -71,11 +71,58 @@ def find_output(cfg: dict, run_name: str, filename: str) -> Path | None:
     return None
 
 
+def find_model_dir(cfg: dict, name: str) -> str:
+    """Where to load a model from: a local folder (e.g. models/minilm_ft, also found inside an earlier
+    notebook's output under /kaggle/input), or else the name itself as a Hugging Face Hub id."""
+    local = resolve(name)
+    if local.is_dir():
+        return str(local)
+    if not name.startswith("models/"):
+        return name  # Hub id such as sentence-transformers/all-MiniLM-L6-v2
+    tail = (*Path(name).parts, "config.json")
+    for d in cfg["paths"]["search_dirs"]:
+        root = resolve(d)
+        if root.exists():
+            for hit in walk_files(root, "config.json"):
+                if hit.parts[-len(tail):] == tail:
+                    return str(hit.parent)
+    raise FileNotFoundError(f"Model folder {name} not found locally or under {cfg['paths']['search_dirs']}. "
+                            "On Kaggle, add the output of notebook 04 (fine-tuning) as an input.\n"
+                            f"Currently under /kaggle/input:\n{describe_inputs()}")
+
+
+def resolve_run(cfg: dict, name: str) -> str:
+    """'auto' = the reranked hybrid run if Prompt 10 decided to keep the reranker, else the hybrid run.
+    'auto_alt' = the other one (used for the extra table row that checks the rerank decision downstream)."""
+    if name not in ("auto", "auto_alt"):
+        return name
+    import json
+
+    path = find_output(cfg, "rerank", "metrics.json")
+    keep = path is not None and json.loads(path.read_text(encoding="utf-8")).get("keep")
+    chosen = "rerank" if keep else "hybrid"
+    return chosen if name == "auto" else ("hybrid" if keep else "rerank")
+
+
+def require_output(cfg: dict, run_name: str, filename: str) -> Path:
+    path = find_output(cfg, run_name, filename)
+    if path is None:
+        raise FileNotFoundError(f"{run_name}/{filename} not found in outputs/ or {cfg['paths']['search_dirs']}. "
+                                f"Run the step that writes outputs/{run_name}/ first, or add that notebook's output as an input.\n"
+                                f"Currently under /kaggle/input:\n{describe_inputs()}")
+    return path
+
+
 # --------------------------------------------------------------------------- corpus and claims
 def load_corpus(corpus_dir: Path) -> pd.DataFrame:
     """Corpus sentences in a fixed order (page_id, sent_id). Row number = document index everywhere."""
     df = pd.read_parquet(corpus_dir / "sentences.parquet", columns=["page_id", "sent_id", "text"])
     return df.sort_values(["page_id", "sent_id"]).reset_index(drop=True)
+
+
+def sentence_lookup(corpus: pd.DataFrame) -> dict:
+    """(page_id, sent_id) -> sentence text."""
+    return dict(zip(zip(corpus["page_id"], corpus["sent_id"].astype(int)), corpus["text"]))
 
 
 def doc_text(page_id: str, text: str, sep: str = ": ") -> str:

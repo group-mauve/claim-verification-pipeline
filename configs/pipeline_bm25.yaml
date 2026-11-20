@@ -1,0 +1,5 @@
+base: pipeline_base.yaml
+run_name: pipeline_bm25
+pipeline:
+  name: BM25 + NLI
+  evidence: {type: run, run: bm25, k: 5}

@@ -1,0 +1,5 @@
+base: pipeline_base.yaml
+run_name: pipeline_hybrid_2hop
+pipeline:
+  name: Hybrid + 2-hop + NLI
+  evidence: {type: chain, run: chain}

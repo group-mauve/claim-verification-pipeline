@@ -1,0 +1,5 @@
+base: pipeline_base.yaml
+run_name: pipeline_gold
+pipeline:
+  name: NLI on gold evidence
+  evidence: {type: gold, nearest_run: bm25, nei_sentences: 2, k: 5}

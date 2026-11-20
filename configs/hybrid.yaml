@@ -1,0 +1,18 @@
+# Prompt 9: hybrid retrieval with RRF and weighted score fusion (owner M2). CPU is enough.
+run_name: hybrid
+seed: 42
+test_subset: full
+
+paths:
+  outputs_dir: outputs
+  search_dirs: [data, outputs, /kaggle/input]
+
+hybrid:
+  sparse_run: bm25
+  dense_run: dense_ft
+  noise_dense_run: dense_ft_seed43   # second fine-tuning seed; gives the noise used in Prompt 10
+  top_k: 100
+  rrf_k: 60
+  alphas: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+  tune_metric: [sentence, recall@10]
+  ks: [5, 10, 20, 50]

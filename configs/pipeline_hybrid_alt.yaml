@@ -1,0 +1,7 @@
+# The hybrid ranking NOT chosen by Prompt 10 (with rerank if it was dropped, without if it was kept),
+# so the table shows the rerank decision's effect on FEVER score too.
+base: pipeline_base.yaml
+run_name: pipeline_hybrid_alt
+pipeline:
+  name: Hybrid + NLI (other rerank choice)
+  evidence: {type: run, run: auto_alt, k: 5}

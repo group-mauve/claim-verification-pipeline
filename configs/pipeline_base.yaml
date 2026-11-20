@@ -1,0 +1,32 @@
+# Prompt 14: settings shared by every pipeline_*.yaml (owner M1).
+# Reproduce the table: python -m src.pipeline --table verification
+seed: 42
+test_subset: full
+
+paths:
+  outputs_dir: outputs
+  search_dirs: [data, outputs, /kaggle/input]
+
+nli:
+  model: cross-encoder/nli-deberta-v3-base
+  fp16: true
+  max_length: 512
+  batch_size: 64
+
+pipeline:
+  calibration: false
+  missing_link_nei: tune     # chains only: answer NEI when no confident hop 2, if that helps on validation
+  threshold_grid: [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+  tau_min: 0.3
+  tau_max: 0.9
+  tau_step: 0.05
+
+tables:
+  verification:
+    - config: configs/pipeline_gold.yaml
+    - config: configs/pipeline_bm25.yaml
+    - config: configs/pipeline_hybrid.yaml
+    - config: configs/pipeline_hybrid_2hop.yaml
+    - config: configs/pipeline_hybrid_2hop_calibrated.yaml
+    - config: configs/pipeline_hybrid_alt.yaml   # checks the rerank decision on FEVER score
+      needs_output: rerank

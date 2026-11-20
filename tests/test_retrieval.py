@@ -1,19 +1,14 @@
 """Tests for src/retrieval (Prompts 5-7) on a tiny synthetic corpus. No GPU, Java or model downloads:
 neural encoders are replaced by a deterministic hashing encoder, so the full scripts still run."""
 import json
-import zlib
 
 import numpy as np
-import pandas as pd
 import pytest
-import yaml
 
 from src.retrieval import bm25 as B
 from src.retrieval import common as C
 from src.retrieval import dense as D
-
-LABELS = ["SUPPORTS", "REFUTES", "NOT ENOUGH INFO"]
-
+from tests.fakes import FakeST
 
 # ----------------------------------------------------------------- small helpers
 def test_docid_roundtrip_and_doc_text():
@@ -99,50 +94,7 @@ def test_rank_bm25_backend():
 
 
 # ----------------------------------------------------------------- end-to-end on a tiny corpus
-@pytest.fixture()
-def tiny(tmp_path):
-    """A 60-page corpus (3 sentences each) with claims whose wording overlaps their evidence."""
-    rows, claims = [], []
-    for i in range(60):
-        for s in range(3):
-            rows.append({"page_id": f"Page_{i}", "sent_id": s, "text": f"Page {i} fact {s} about topic{i} and word{i * 3 + s} .", "links": []})
-    corpus_dir, splits_dir = tmp_path / "data" / "corpus", tmp_path / "data" / "splits"
-    corpus_dir.mkdir(parents=True)
-    splits_dir.mkdir(parents=True)
-    pd.DataFrame(rows).to_parquet(corpus_dir / "sentences.parquet", index=False)
-    for i in range(60):
-        lab = LABELS[i % 3]
-        ev = [[[i, None, None, None]]] if lab == LABELS[2] else [[[i, i, f"Page_{i}", 1]]]
-        claims.append({"id": i, "label": lab, "claim": f"topic{i} word{i * 3 + 1}", "evidence": ev})
-    for name, part in (("train", claims[:30]), ("val", claims[30:45]), ("test_full", claims[45:]), ("test_5k", claims[45:])):
-        with open(splits_dir / f"{name}.jsonl", "w") as f:
-            f.writelines(json.dumps(c) + "\n" for c in part)
-
-    def write_cfg(name, body):
-        body = {**body, "paths": {"outputs_dir": str(tmp_path / "outputs"), "search_dirs": [str(tmp_path / "data"), str(tmp_path / "outputs")]}}
-        p = tmp_path / f"{name}.yaml"
-        p.write_text(yaml.safe_dump(body))
-        return str(p)
-
-    return tmp_path, write_cfg
-
-
-class FakeST:
-    """Stands in for SentenceTransformer: bag-of-hashed-words vectors, L2-normalised."""
-
-    def __init__(self, dim=64):
-        self.dim = dim
-
-    def get_sentence_embedding_dimension(self):
-        return self.dim
-
-    def encode(self, texts, normalize_embeddings=True, **_):
-        out = np.zeros((len(texts), self.dim), np.float32)
-        for r, t in enumerate(texts):
-            for w in t.lower().replace(":", " ").split():
-                out[r, zlib.crc32(w.encode()) % self.dim] += 1
-        n = np.linalg.norm(out, axis=1, keepdims=True)
-        return out / np.maximum(n, 1e-9) if normalize_embeddings else out
+# The `tiny` fixture is in conftest.py; FakeST in tests/fakes.py.
 
 
 def test_bm25_quick_end_to_end(tiny):
