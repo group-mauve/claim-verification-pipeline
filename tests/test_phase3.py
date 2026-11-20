@@ -15,7 +15,7 @@ from src.retrieval.finetune import build_training_rows
 from src.utils import load_config
 from src.verify import calibrate as K
 from src.verify import evidence as E
-from tests.fakes import FakeNLIScorer, FakeST
+from fakes import FakeNLIScorer, FakeST
 
 log = logging.getLogger("test")
 
@@ -142,7 +142,7 @@ def test_phase3_end_to_end(tiny, monkeypatch):
     from src.retrieval import finetune as F
     from src.retrieval import rerank as R
     from src.verify import nli as N
-    from tests.fakes import overlap
+    from fakes import overlap
 
     root, write_cfg = tiny
     out = root / "outputs"

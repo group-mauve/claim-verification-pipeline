@@ -8,7 +8,7 @@ import pytest
 from src.retrieval import bm25 as B
 from src.retrieval import common as C
 from src.retrieval import dense as D
-from tests.fakes import FakeST
+from fakes import FakeST
 
 # ----------------------------------------------------------------- small helpers
 def test_docid_roundtrip_and_doc_text():
