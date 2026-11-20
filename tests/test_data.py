@@ -2,7 +2,15 @@
 import random
 from collections import Counter
 
-from src.data.download import parse_lines_field
+from src.data.download import is_wiki_file, parse_lines_field
+
+
+def test_is_wiki_file_skips_macos_metadata():
+    assert is_wiki_file("wiki-pages/wiki-001.jsonl")
+    assert is_wiki_file("wiki-109.jsonl")
+    assert not is_wiki_file("__MACOSX/wiki-pages/._wiki-001.jsonl")
+    assert not is_wiki_file("wiki-pages/._wiki-001.jsonl")
+    assert not is_wiki_file("wiki-pages/README.txt")
 from src.data.page_bm25 import SparseBM25
 from src.data.splits import allocate, stratified_sample
 from src.utils import evidence_pages, evidence_sets, readable_title

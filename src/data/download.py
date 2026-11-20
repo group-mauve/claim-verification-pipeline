@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import re
 import shutil
 import sys
 import time
@@ -177,15 +178,29 @@ def parse_lines_field(lines: str) -> list[tuple[int, str, list[str]]]:
     return out
 
 
+WIKI_FILE = re.compile(r"^wiki-\d+\.jsonl$")
+
+
+def is_wiki_file(path: str) -> bool:
+    """True only for real dump files like 'wiki-pages/wiki-001.jsonl'.
+
+    Rejects macOS metadata entries such as '__MACOSX/wiki-pages/._wiki-001.jsonl', which are
+    binary and caused a UnicodeDecodeError.
+    """
+    return "__MACOSX" not in path and bool(WIKI_FILE.match(Path(path).name))
+
+
 def iter_wiki_files(source: Path):
     """Yield (file_name, text stream) for each wiki-NNN.jsonl, from a zip or a folder."""
     if source.is_dir():
-        for path in sorted(source.glob("wiki-*.jsonl")):
+        for path in sorted(p for p in source.glob("wiki-*.jsonl") if is_wiki_file(str(p))):
             with open(path, "r", encoding="utf-8") as f:
                 yield path.name, f
     else:
         with zipfile.ZipFile(source) as zf:
-            members = sorted(m for m in zf.namelist() if m.endswith(".jsonl") and "wiki-" in Path(m).name)
+            members = sorted(m for m in zf.namelist() if is_wiki_file(m))
+            if not members:
+                raise RuntimeError(f"No wiki-NNN.jsonl files inside {source}")
             for m in members:
                 with zf.open(m) as raw:
                     yield Path(m).name, io.TextIOWrapper(raw, encoding="utf-8")
